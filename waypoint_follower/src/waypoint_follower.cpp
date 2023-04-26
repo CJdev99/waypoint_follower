@@ -4,7 +4,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <move_base_msgs/MoveBaseAction.h>
 #include <move_base_msgs/MoveBaseGoal.h>
-
+#include <actionlib_msgs/GoalStatusArray.h>
 #include <actionlib/client/simple_action_client.h>
 
 #include <tf/transform_listener.h>
@@ -41,6 +41,7 @@ class MainNode
         void saveWaypointCallback(const std_msgs::Empty::ConstPtr& msg);
         void toggleNavigationCallback(const std_msgs::Empty::ConstPtr& msg);
         void clickedPointCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
+        void resultCallback(const move::PoseWithCovarianceStamped::ConstPtr& msg);
         //void stopNavigationCallback(const std_msgs::Empty::ConstPtr& msg);
         void loadQueue();
         int run();
@@ -51,6 +52,7 @@ class MainNode
         ros::Subscriber start_nav_sub_;
         ros::Subscriber stop_nav_sub_;
         ros::Subscriber clicked_point_sub_;
+        ros::Subscriber status_sub;
         ros::Publisher cancel_waypoint;
         tf::TransformListener listener_;
         std::string map_frame_;
@@ -60,6 +62,7 @@ class MainNode
         move_base_msgs::MoveBaseGoal goal;
         geometry_msgs::PoseStamped current_pose;
         geometry_msgs::PoseStamped goal_pose;
+        geometry_msgs::PoseStamped dummy_pose;
         
         
         uint32_t starttime;
@@ -93,7 +96,7 @@ MainNode::MainNode():
     //ros::NodeHandle nhLocal("~");
     //loadQueue(); 
     // add dummy waypoint to be tossed outat start
-    geometry_msgs::PoseStamped dummy_pose;
+    
     dummy_pose.header.stamp = ros::Time::now();
     dummy_pose.header.frame_id =  "" + map_frame_;
     dummy_pose.pose.position.x = 0;
@@ -165,6 +168,23 @@ void MainNode::clickedPointCallback(const geometry_msgs::PoseWithCovarianceStamp
     ROS_INFO_STREAM("Waypoint saved from Rviz"<< clicked_pose.pose.position.x << clicked_pose.pose.position.y << clicked_pose.pose.position.z);
     
     
+}
+
+void MainNode::statusCallback(const actionlib_msgs::GoalStatusArray::ConstPtr& msg)
+{
+    // Check if the status message is not empty
+    if (!msg->status_list.empty()) {
+        // Get the status of the first goal in the list (assuming only one goal is being executed at a time)
+        const auto& status = msg->status_list.front();
+        
+        // Check if the status is 'aborted'
+        if (status.status == actionlib_msgs::GoalStatus::ABORTED) {
+            ROS_WARN("Navigation goal aborted!");
+            //add dummy pose to send current goal again
+            waypoint_queue_.push_back(dummy_pose);
+            reachedGoal = true;
+        }
+    }
 }
 //toggle nav state
 void MainNode::toggleNavigationCallback(const std_msgs::Empty::ConstPtr& msg){
@@ -268,6 +288,7 @@ int MainNode::run()
     save_waypoint_sub_ = nh_.subscribe("save_waypoint", 1, &MainNode::saveWaypointCallback, this);
     start_nav_sub_ = nh_.subscribe("start_navigation", 1, &MainNode::toggleNavigationCallback, this);
     clicked_point_sub_ = nh_.subscribe("initialpose", 1, &MainNode::clickedPointCallback, this);
+    status_sub = nh_.subscribe("/move_base/status", 10, &MainNode::statusCallback,this);
     cancel_waypoint = nh_.advertise<std_msgs::Empty>("cancel_waypoint", 1);
     //stop_nav_sub_ = nh_.subscribe("stop_navigation", 1, &MainNode::stopNavigationCallback, this);
     //init MoveBaseClient
