@@ -7,3 +7,6 @@
 ### Publishers:
 * /cancel_waypoint: Cancels current goal sent to move_base
 
+TODO:
+* add publisher to RTABmap localization service to enable/disable localization mode
+
