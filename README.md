@@ -10,3 +10,17 @@
 TODO:
 * add publisher to RTABmap localization service to enable/disable localization mode
 
+If you are not running with website, operate the following:
+
+`rosrun waypoint_follower driver`
+
+To save waypoints:
+
+Use 'initial pose' function of rviz or `rostopic pub /save_waypoint std_msgs/Empty`
+
+Start navigation:
+
+`rostopic pub /start_navigation std_msgs/Empty`
+
+
+
