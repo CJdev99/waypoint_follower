@@ -14,6 +14,8 @@
 #include <signal.h>
 #define DELTAT(_nowtime,_thentime) ((_thentime>_nowtime)?((0xffffffff-_thentime)+_nowtime):(_nowtime-_thentime))
 
+//Define to print distance to goal in terminal
+#define DEBUG_POSE_LOOP
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
 
@@ -265,7 +267,10 @@ void MainNode::currentPoseLoop(){
         if (distanceToGoal < 1.0){
             reachedGoal = true;
         }
+        #ifdef DEBUG_POSE_LOOP
         ROS_INFO_STREAM("distance to goal: " << distanceToGoal);
+        #endif
+
     }catch
     (tf::TransformException ex){
         ROS_WARN_STREAM(" cant get transform");
